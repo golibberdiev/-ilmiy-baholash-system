@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Tashkilotda ilmiy faoliyat samaradorligini baholash</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+        crossorigin="anonymous"
+    >
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            background-color: #f5f5f7;
+        }
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        }
+        .card-header {
+            border-bottom: none;
+            background-color: transparent;
+        }
+        .summary-card h2 {
+            font-size: 2.4rem;
+            margin: 0;
+        }
+        .summary-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .badge-block {
+            font-size: 0.9rem;
+        }
+        .table-sm td, .table-sm th {
+            padding: .25rem .5rem;
+        }
+        @media (max-width: 768px) {
+            .chart-wrapper {
+                margin-top: 1rem;
+            }
+        }
+        .logo-atmu {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 8px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+<div class="container my-4">
+
+    <!-- ====== HEADER + LOGO + MUALLIF ====== -->
+    <header class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between mb-3">
+        <div class="d-flex align-items-center mb-3 mb-lg-0">
+            <img src="/static/atmu_logo.png" alt="ATMU logotipi" class="logo-atmu me-3">
+            <div>
+                <div class="fw-bold">
+                    AXBOROT TEXNOLOGIYALARI VA MENEJMENT UNIVERSITETI
+                </div>
+                <div class="text-muted small">
+                    Tashkilotda ilmiy faoliyat samaradorligini baholash axborot tizimi
+                </div>
+            </div>
+        </div>
+        <div class="text-lg-end">
+            <div class="small text-muted">Muallif:</div>
+            <div class="fw-semibold">YAKUBOV OZOD SHAVKAT O‘G‘LI</div>
+            <div class="small text-muted">
+                ATMU magistrlik dissertatsiya ishi doirasida ishlab chiqilgan
+            </div>
+        </div>
+    </header>
+
+    <!-- 1. Forma: umumiy ma'lumotlar + ko'rsatkichlar -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Umumiy ma'lumotlar</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Tashkilot nomi</label>
+                        <input id="tashkilot" class="form-control" placeholder="ATMU" value="ATMU">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Yil</label>
+                        <input id="yil" type="number" class="form-control" value="2025">
+                    </div>
+                    <button class="btn btn-primary w-100" onclick="sendRequest()">
+                        Baholashni bajarish
+                    </button>
+                    <small class="text-muted d-block mt-2">
+                        Forma bo‘yicha qiymatlarni kiriting va "Baholashni bajarish" tugmasini bosing.
+                    </small>
+                    <a href="/admin" class="btn btn-outline-secondary btn-sm w-100 mt-3">
+                        Admin panelga o‘tish
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Ko‘rsatkich qiymatlari</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">
+                            R1 – Ilmiy darajali xodimlar ulushi (0.0 .. 0.8)
+                        </label>
+                        <input id="R1_value" type="number" step="0.01" value="0.2" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            P1 – Xalqaro hamkorlikdagi loyihalar soni (0 .. 10)
+                        </label>
+                        <input id="P1_value" type="number" step="1" value="5" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            O1 – Scopusdagi maqolalar soni (0 .. 20)
+                        </label>
+                        <input id="O1_value" type="number" step="1" value="8" class="form-control">
+                    </div>
+
+                    <div class="mb-1">
+                        <label class="form-label">
+                            I1 – Tijoratlashtirilgan ishlanmalar soni (0 .. 10)
+                        </label>
+                        <input id="I1_value" type="number" step="1" value="3" class="form-control">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Natija va diagnostika -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+            <div class="card summary-card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Umumiy indeks</h5>
+                </div>
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <div class="summary-label mb-1" id="summaryOrgYear">
+                        Tashkilot va yil kiriting
+                    </div>
+                    <h2 id="summaryIndex">–</h2>
+                    <div id="summaryLevel" class="text-muted mt-1">
+                        Indeks hali hisoblanmagan
+                    </div>
+                    <div id="result" class="mt-2 fw-semibold"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Diagnostika va ilmiy tavsiyalar</h5>
+                </div>
+                <div class="card-body">
+                    <div id="diagnostics" class="mb-2">
+                        Bloklar bo‘yicha tahlil natijalari bu yerda ko‘rinadi.
+                    </div>
+                    <div class="alert alert-info py-2 mb-2" id="hintBox">
+                        Tavsiya: dastlab qiymatlarni kiriting va baholashni ishga tushiring.
+                    </div>
+                    <div id="recommendations" class="mt-2">
+                        Hozircha individual ilmiy tavsiyalar shakllantirilmagan.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Bloklar jadvali + grafiklar -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Blok indekslari jadvali</h5>
+                </div>
+                <div class="card-body">
+                    <table id="blocksTable" class="table table-sm table-striped align-middle mb-0">
+                        <thead>
+                        <tr>
+                            <th>Blok</th>
+                            <th>Indeks</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <!-- JS orqali to‘ldiriladi -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="row g-4">
+                <div class="col-md-6 chart-wrapper">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0">Blok indekslari – ustunli grafik</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="blocksChart" height="180"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 chart-wrapper">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0">Blok profili – radar grafik</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="radarChart" height="180"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. DASTUR HAQIDA -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Dastur haqida</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-1">
+                Ushbu axborot tizim <b>YAKUBOV OZOD SHAVKAT O‘G‘LI</b> tomonidan
+                Axborot texnologiyalari va menejment universiteti magistratura bosqichi
+                bitiruv malakaviy ishi doirasida ishlab chiqilgan.
+            </p>
+            <ul class="mb-1">
+                <li>Tizim ilmiy faoliyatni <b>R (resurslar)</b>, <b>P (jarayonlar)</b>,
+                    <b>O (natijalar)</b> va <b>I (ta'sir va tijoratlashtirish)</b> bloklari bo‘yicha
+                    kompleks baholashga mo‘ljallangan.</li>
+                <li>Har bir indikator 0..1 oraliqqa normallashtiriladi va vazn koeffitsiyentlari
+                    orqali blok indekslari hisoblanadi.</li>
+                <li>Blok indekslari asosida tashkilotning integral ilmiy samaradorlik
+                    indeksi S aniqlanadi va sifat darajasi (Past, O‘rtacha, Yuqori, Juda yuqori)
+                    bo‘yicha klassifikatsiya qilinadi.</li>
+                <li>Tizim foydalanuvchiga nafaqat sonli natijani, balki eng kuchli va eng zaif
+                    bloklar bo‘yicha <b>ilmiy-amaliy tavsiyalar</b>ni ham taqdim etadi.</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer class="text-center text-muted mb-3">
+        <small>© Axborot texnologiyalari va menejment universiteti (ATMU). Ilmiy faoliyat samaradorligini baholash tizimi.</small>
+    </footer>
+
+</div>
+
+<script>
+let barChart = null;
+let radarChart = null;
+
+async function sendRequest() {
+    const tashkilot = document.getElementById("tashkilot").value || null;
+    const yil = parseInt(document.getElementById("yil").value) || null;
+
+    const R1 = parseFloat(document.getElementById("R1_value").value);
+    const P1 = parseFloat(document.getElementById("P1_value").value);
+    const O1 = parseFloat(document.getElementById("O1_value").value);
+    const I1 = parseFloat(document.getElementById("I1_value").value);
+
+    const body = {
+        tashkilot: tashkilot,
+        yil: yil,
+        indicators: [
+            {
+                id: "R1",
+                name: "Ilmiy darajali xodimlar ulushi",
+                block: "R",
+                value: R1,
+                min_value: 0.0,
+                max_value: 0.8,
+                weight: 0.4,
+                is_benefit: true
+            },
+            {
+                id: "P1",
+                name: "Xalqaro hamkorlikdagi loyihalar soni",
+                block: "P",
+                value: P1,
+                min_value: 0,
+                max_value: 10,
+                weight: 0.5,
+                is_benefit: true
+            },
+            {
+                id: "O1",
+                name: "Scopusdagi maqolalar soni",
+                block: "O",
+                value: O1,
+                min_value: 0,
+                max_value: 20,
+                weight: 0.6,
+                is_benefit: true
+            },
+            {
+                id: "I1",
+                name: "Tijoratlashtirilgan ishlanmalar soni",
+                block: "I",
+                value: I1,
+                min_value: 0,
+                max_value: 10,
+                weight: 0.7,
+                is_benefit: true
+            }
+        ],
+        block_weights: {
+            alpha_R: 0.25,
+            alpha_P: 0.25,
+            alpha_O: 0.25,
+            alpha_I: 0.25
+        }
+    };
+
+    const resultDiv = document.getElementById("result");
+    resultDiv.textContent = "Hisoblanmoqda...";
+
+    try {
+        const resp = await fetch("/evaluate", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(body)
+        });
+
+        if (!resp.ok) {
+            const txt = await resp.text();
+            resultDiv.textContent = "Xatolik: " + resp.status + " – " + txt;
+            return;
+        }
+
+        const data = await resp.json();
+        handleEvaluationResult(data);
+
+    } catch (e) {
+        resultDiv.textContent = "Tarmoq yoki server xatosi: " + e;
+    }
+}
+
+function handleEvaluationResult(data) {
+    const resultDiv = document.getElementById("result");
+    const summaryIndex = document.getElementById("summaryIndex");
+    const summaryOrgYear = document.getElementById("summaryOrgYear");
+    const summaryLevel = document.getElementById("summaryLevel");
+    const diagnostics = document.getElementById("diagnostics");
+    const hintBox = document.getElementById("hintBox");
+    const recDiv = document.getElementById("recommendations");
+
+    const tashkilot = data.tashkilot || "Noma'lum tashkilot";
+    const yil = data.yil || "Noma'lum yil";
+    const total = data.total_index !== undefined ? data.total_index : null;
+    const level = data.level || null;
+    const weakestBlockFromServer = data.weakest_block || null;
+    const strongestBlockFromServer = data.strongest_block || null;
+
+    if (total === null) {
+        resultDiv.textContent = "Javob formatida xatolik: total_index topilmadi.";
+        return;
+    }
+
+    summaryOrgYear.textContent = `${tashkilot}, ${yil}`;
+    summaryIndex.textContent = total.toFixed(3);
+    summaryLevel.textContent = level
+        ? `Ilmiy samaradorlik darajasi: ${level}`
+        : "Ilmiy samaradorlik darajasi: aniqlanmagan";
+
+    resultDiv.textContent = `Umumiy indeks S = ${total.toFixed(3)}`;
+
+    const blocks = data.blocks || [];
+    updateBlocksTable(blocks);
+    drawCharts(blocks);
+
+    let maxB = null;
+    let minB = null;
+
+    if (blocks.length > 0) {
+        maxB = blocks[0];
+        minB = blocks[0];
+        for (const b of blocks) {
+            if (b.value > maxB.value) maxB = b;
+            if (b.value < minB.value) minB = b;
+        }
+
+        const strongestCode = strongestBlockFromServer || maxB.block;
+        const weakestCode = weakestBlockFromServer || minB.block;
+
+        diagnostics.innerHTML = `
+            <p class="mb-1">
+                <span class="badge bg-success badge-block">
+                    Eng kuchli blok: ${strongestCode} (indeks: ${maxB.value.toFixed(3)})
+                </span>
+            </p>
+            <p class="mb-0">
+                <span class="badge bg-warning text-dark badge-block">
+                    Eng zaif blok: ${weakestCode} (indeks: ${minB.value.toFixed(3)})
+                </span>
+            </p>
+        `;
+
+        hintBox.classList.remove("alert-info");
+        hintBox.classList.add("alert-light");
+        hintBox.textContent =
+            "Tahlil yakunlandi. Quyidagi tavsiyalar eng zaif blokni rivojlantirishga qaratilgan.";
+
+        const recHtml = buildRecommendations(level, weakestCode);
+        recDiv.innerHTML = recHtml;
+
+    } else {
+        diagnostics.textContent = "Blok ko‘rsatkichlari topilmadi.";
+        hintBox.className = "alert alert-info py-2 mb-2";
+        hintBox.textContent =
+            "Tavsiyalar shakllantirish uchun kamida bitta ko‘rsatkich kiritilishi kerak.";
+        recDiv.textContent =
+            "Hozircha individual ilmiy tavsiyalar shakllantirilmagan.";
+    }
+}
+
+function buildRecommendations(level, weakestBlock) {
+    let commonPart = "";
+    if (level === "Past") {
+        commonPart = `
+            <p class="mb-1">
+                Umumiy ilmiy samaradorlik darajasi <b>past</b>. Qisqa muddatda
+                asosiy ko‘rsatkichlar bo‘yicha maqsadli strategik rejani ishlab chiqish tavsiya etiladi.
+            </p>
+        `;
+    } else if (level === "O‘rtacha") {
+        commonPart = `
+            <p class="mb-1">
+                Umumiy ilmiy samaradorlik darajasi <b>o‘rtacha</b>. Mavjud salohiyatni
+                yanada faollashtirish orqali yuqori darajaga chiqish mumkin.
+            </p>
+        `;
+    } else if (level === "Yuqori") {
+        commonPart = `
+            <p class="mb-1">
+                Umumiy ilmiy samaradorlik darajasi <b>yuqori</b>. Mavjud yutuqlarni
+                mustahkamlash bilan birga zaif bloklarni rivojlantirish maqsadga muvofiq.
+            </p>
+        `;
+    } else if (level === "Juda yuqori") {
+        commonPart = `
+            <p class="mb-1">
+                Umumiy ilmiy samaradorlik darajasi <b>juda yuqori</b>. Tashkilot ilg‘or
+                ilmiy muassasalar qatoriga kirish potensialiga ega, natijalarni xalqaro miqyosda
+                kengroq targ‘ib qilish tavsiya etiladi.
+            </p>
+        `;
+    } else {
+        commonPart = `
+            <p class="mb-1">
+                Umumiy ilmiy samaradorlik darajasi bo‘yicha ma'lumot to‘liq shakllanmagan.
+                Biroq eng zaif blok bo‘yicha quyidagi tavsiyalarni e'tiborga olish mumkin.
+            </p>
+        `;
+    }
+
+    let blockPart = "";
+
+    switch (weakestBlock) {
+        case "R":
+            blockPart = `
+                <p class="mb-1"><b>R bloki (Resurslar) bo‘yicha tavsiyalar:</b></p>
+                <ul class="mb-1">
+                    <li>Ilmiy darajali (PhD, DSc) xodimlar ulushini oshirish bo‘yicha maqsadli reja ishlab chiqish.</li>
+                    <li>Doktorantura, stajirovka va ilmiy malaka oshirish dasturlarida ishtirok etishni rag‘batlantirish.</li>
+                    <li>Yosh tadqiqotchilar va ilmiy maktablarni qo‘llab-quvvatlash mexanizmlarini kuchaytirish.</li>
+                </ul>
+            `;
+            break;
+        case "P":
+            blockPart = `
+                <p class="mb-1"><b>P bloki (Jarayonlar) bo‘yicha tavsiyalar:</b></p>
+                <ul class="mb-1">
+                    <li>Xalqaro hamkorlikdagi qo‘shma loyihalar va grantlar sonini oshirish.</li>
+                    <li>Chet el universitetlari, ilmiy markazlar va sanoat korxonalari bilan hamkorlik memorandumlarini kengaytirish.</li>
+                    <li>Ilmiy seminar, konferensiya va loyihalar boshqaruvi bo‘yicha menejmentni takomillashtirish.</li>
+                </ul>
+            `;
+            break;
+        case "O":
+            blockPart = `
+                <p class="mb-1"><b>O bloki (Natijalar) bo‘yicha tavsiyalar:</b></p>
+                <ul class="mb-1">
+                    <li>Scopus va Web of Science bazalaridagi jurnallarda maqolalar sonini oshirish strategiyasini ishlab chiqish.</li>
+                    <li>Q1–Q2 toifadagi jurnallarga yo‘naltirilgan ilmiy ishlar sifatini oshirish bo‘yicha treninglar tashkil etish.</li>
+                    <li>Hamkorlikda yozilgan maqolalar ulushini ko‘paytirish va sitatalar sonini oshirish.</li>
+                </ul>
+            `;
+            break;
+        case "I":
+            blockPart = `
+                <p class="mb-1"><b>I bloki (Ta'sir va tijoratlashtirish) bo‘yicha tavsiyalar:</b></p>
+                <ul class="mb-1">
+                    <li>Ilmiy ishlanmalarni patentlash va muhofaza qilish mexanizmlarini kuchaytirish.</li>
+                    <li>Tijoratlashtirish bo‘yicha texnoparklar, startaplar va sanoat hamkorlar bilan aloqalarni rivojlantirish.</li>
+                    <li>Amaliy loyihalar orqali bozor ehtiyojiga mos innovatsion mahsulot va xizmatlar ishlab chiqishni rag‘batlantirish.</li>
+                </ul>
+            `;
+            break;
+        default:
+            blockPart = `
+                <p class="mb-1">
+                    Eng zaif blok aniqlanmadi yoki ma'lumot yetarli emas. R, P, O, I ko‘rsatkichlarini
+                    to‘liq kiritgan holda baholashni qayta ishga tushiring.
+                </p>
+            `;
+            break;
+    }
+
+    return commonPart + blockPart;
+}
+
+function updateBlocksTable(blocks) {
+    const tbody = document.querySelector("#blocksTable tbody");
+    tbody.innerHTML = "";
+    blocks.forEach(b => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${b.block}</td><td>${b.value.toFixed(3)}</td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+function drawCharts(blocks) {
+    const labels = blocks.map(b => b.block);
+    const values = blocks.map(b => b.value);
+
+    const barCtx = document.getElementById("blocksChart").getContext("2d");
+    const radarCtx = document.getElementById("radarChart").getContext("2d");
+
+    if (barChart) {
+        barChart.destroy();
+    }
+    if (radarChart) {
+        radarChart.destroy();
+    }
+
+    barChart = new Chart(barCtx, {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Blok indeksi",
+                data: values
+            }]
+        },
+        options: {
+            scales: {
+                y: {beginAtZero: true, max: 1}
+            }
+        }
+    });
+
+    radarChart = new Chart(radarCtx, {
+        type: "radar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Blok profili",
+                data: values,
+                fill: true
+            }]
+        },
+        options: {
+            scales: {
+                r: {beginAtZero: true, max: 1}
+            }
+        }
+    });
+}
+</script>
+
+</body>
+</html>

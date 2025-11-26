@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>ATMU – Ilmiy faoliyat admin paneli</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+        crossorigin="anonymous"
+    >
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            background-color: #f5f5f7;
+        }
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        }
+        .card-header {
+            border-bottom: none;
+            background-color: transparent;
+        }
+        .logo-atmu {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 8px rgba(0,0,0,0.15);
+        }
+        .table-sm td, .table-sm th {
+            padding: .25rem .5rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container my-4">
+
+    <!-- HEADER -->
+    <header class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between mb-3">
+        <div class="d-flex align-items-center mb-3 mb-lg-0">
+            <img src="/static/atmu_logo.png" alt="ATMU logotipi" class="logo-atmu me-3">
+            <div>
+                <div class="fw-bold">
+                    AXBOROT TEXNOLOGIYALARI VA MENEJMENT UNIVERSITETI
+                </div>
+                <div class="text-muted small">
+                    Ilmiy faoliyat samaradorligini baholash tizimi – Admin panel
+                </div>
+            </div>
+        </div>
+        <div class="text-lg-end">
+            <div class="small text-muted">Muallif:</div>
+            <div class="fw-semibold">YAKUBOV OZOD SHAVKAT O‘G‘LI</div>
+            <div class="small text-muted">Magistrlik dissertatsiyasi doirasida ishlab chiqilgan</div>
+            <a href="/" class="btn btn-outline-primary btn-sm mt-1">Foydalanuvchi interfeysiga o‘tish</a>
+        </div>
+    </header>
+
+    <!-- FILTERLAR + QISQA STATISTIKA -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Filtrlar</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label small">Tashkilotni tanlang</label>
+                        <select id="orgFilter" class="form-select form-select-sm" onchange="applyFilters()">
+                            <option value="">Barchasi</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Yil (min)</label>
+                        <input id="yearMin" type="number" class="form-control form-control-sm" onchange="applyFilters()">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Yil (max)</label>
+                        <input id="yearMax" type="number" class="form-control form-control-sm" onchange="applyFilters()">
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="resetFilters()">
+                        Filtrlarni tozalash
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Umumlashtirilgan statistika</h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success btn-sm" onclick="exportExcel()">
+                            Excelga eksport
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="loadData(true)">
+                            Yangilash
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <div class="border rounded-3 p-2 bg-white">
+                                <div class="small text-muted">Baholashlar soni</div>
+                                <div class="fs-4 fw-semibold" id="statCount">0</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded-3 p-2 bg-white">
+                                <div class="small text-muted">O‘rtacha indeks</div>
+                                <div class="fs-4 fw-semibold" id="statAvg">–</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded-3 p-2 bg-white">
+                                <div class="small text-muted">Eng yuqori indeks</div>
+                                <div class="fs-4 fw-semibold" id="statMax">–</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <canvas id="orgChart" height="120"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JADVAL -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Baholashlar jadvali</h5>
+            <small class="text-muted" id="tableInfo">0 ta yozuv</small>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0" id="evalTable">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Tashkilot</th>
+                        <th>Yil</th>
+                        <th>Umumiy indeks</th>
+                        <th>R</th>
+                        <th>P</th>
+                        <th>O</th>
+                        <th>I</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- JS orqali to‘ldiriladi -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dastur haqida qisqa eslatma -->
+    <div class="text-center text-muted mb-3 small">
+        Admin panel faqat tahlil va statistik ko‘rinish uchun mo‘ljallangan.
+        Baholash kiritish foydalanuvchi interfeysi orqali amalga oshiriladi.
+    </div>
+
+    <footer class="text-center text-muted mb-3">
+        <small>© ATMU. Ilmiy faoliyat samaradorligini baholash tizimi – admin panel.</small>
+    </footer>
+
+</div>
+
+<script>
+let allData = [];
+let filteredData = [];
+let orgChart = null;
+
+async function loadData(showToast) {
+    try {
+        const resp = await fetch("/evaluations");
+        if (!resp.ok) {
+            console.error("Evaluations load error:", resp.status);
+            return;
+        }
+        const data = await resp.json();
+        allData = data;
+        filteredData = data;
+        fillOrgFilter();
+        updateView();
+        if (showToast) {
+            console.log("Ma'lumotlar yangilandi");
+        }
+    } catch (e) {
+        console.error("Error loading evaluations:", e);
+    }
+}
+
+function fillOrgFilter() {
+    const select = document.getElementById("orgFilter");
+    const prevValue = select.value;
+    const orgs = new Set();
+    allData.forEach(r => {
+        if (r.tashkilot) orgs.add(r.tashkilot);
+    });
+    select.innerHTML = '<option value="">Barchasi</option>';
+    Array.from(orgs).sort().forEach(org => {
+        const opt = document.createElement("option");
+        opt.value = org;
+        opt.textContent = org;
+        select.appendChild(opt);
+    });
+    if (prevValue) {
+        select.value = prevValue;
+    }
+}
+
+function applyFilters() {
+    const org = document.getElementById("orgFilter").value;
+    const yearMinVal = parseInt(document.getElementById("yearMin").value);
+    const yearMaxVal = parseInt(document.getElementById("yearMax").value);
+
+    filteredData = allData.filter(r => {
+        if (org && r.tashkilot !== org) return false;
+        if (!isNaN(yearMinVal) && r.yil < yearMinVal) return false;
+        if (!isNaN(yearMaxVal) && r.yil > yearMaxVal) return false;
+        return true;
+    });
+
+    updateView();
+}
+
+function resetFilters() {
+    document.getElementById("orgFilter").value = "";
+    document.getElementById("yearMin").value = "";
+    document.getElementById("yearMax").value = "";
+    filteredData = allData;
+    updateView();
+}
+
+function updateView() {
+    updateStats();
+    updateTable();
+    updateChart();
+}
+
+function updateStats() {
+    const statCount = document.getElementById("statCount");
+    const statAvg = document.getElementById("statAvg");
+    const statMax = document.getElementById("statMax");
+
+    const n = filteredData.length;
+    statCount.textContent = n;
+
+    if (n === 0) {
+        statAvg.textContent = "–";
+        statMax.textContent = "–";
+        return;
+    }
+
+    let sum = 0;
+    let max = -Infinity;
+    filteredData.forEach(r => {
+        const v = Number(r.total_index || 0);
+        sum += v;
+        if (v > max) max = v;
+    });
+
+    statAvg.textContent = (sum / n).toFixed(3);
+    statMax.textContent = max.toFixed(3);
+}
+
+function updateTable() {
+    const tbody = document.querySelector("#evalTable tbody");
+    const info = document.getElementById("tableInfo");
+    tbody.innerHTML = "";
+
+    filteredData.forEach((r, idx) => {
+        const bv = r.block_values || {};
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${idx + 1}</td>
+            <td>${r.tashkilot || ""}</td>
+            <td>${r.yil || ""}</td>
+            <td>${r.total_index !== null ? Number(r.total_index).toFixed(3) : ""}</td>
+            <td>${bv.R !== undefined ? Number(bv.R).toFixed(3) : ""}</td>
+            <td>${bv.P !== undefined ? Number(bv.P).toFixed(3) : ""}</td>
+            <td>${bv.O !== undefined ? Number(bv.O).toFixed(3) : ""}</td>
+            <td>${bv.I !== undefined ? Number(bv.I).toFixed(3) : ""}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    info.textContent = `${filteredData.length} ta yozuv`;
+}
+
+function updateChart() {
+    const ctx = document.getElementById("orgChart").getContext("2d");
+
+    // Tashkilot bo‘yicha o‘rtacha indeks
+    const orgMap = new Map();
+    filteredData.forEach(r => {
+        const key = r.tashkilot || "Noma'lum";
+        const val = Number(r.total_index || 0);
+        if (!orgMap.has(key)) {
+            orgMap.set(key, {sum: 0, count: 0});
+        }
+        const obj = orgMap.get(key);
+        obj.sum += val;
+        obj.count += 1;
+    });
+
+    const labels = [];
+    const values = [];
+    orgMap.forEach((v, k) => {
+        labels.push(k);
+        values.push(v.sum / v.count);
+    });
+
+    if (orgChart) {
+        orgChart.destroy();
+    }
+
+    orgChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Tashkilot bo‘yicha o‘rtacha indeks",
+                data: values
+            }]
+        },
+        options: {
+            scales: {
+                y: {beginAtZero: true, max: 1}
+            }
+        }
+    });
+}
+
+// 🔹 Excelga eksport qilish
+function exportExcel() {
+    window.location.href = "/export/excel";
+}
+
+// Sahifa yuklanganda ma'lumotlarni o‘qiymiz
+loadData(false);
+</script>
+
+</body>
+</html>
