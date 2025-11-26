@@ -1,22 +1,21 @@
-# Backend uchun Python bazaviy imidj
-FROM python:3.11-slim
+# FastAPI ilovamiz uchun engil Python imiji
+FROM python:3.12-slim
 
-# Ishchi katalog
+# Konteyner ichida ishchi papka
 WORKDIR /app
 
-# Kerakli sistem paketlar (agar kerak bo‘lsa, hozircha minimal)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
-
-# Python kutubxonalarini o‘rnatamiz
+# 1. Faqat dependenciesni o'rnatamiz
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Loyihadagi barcha fayllarni konteyner ichiga nusxalash
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 2. Ilovaning qolgan fayllarini ko'chiramiz
 COPY . .
 
-# Railway odatda PORT muhit o‘zgaruvchisini beradi, shuni ishlatamiz
+# Railway uchun port
 ENV PORT=8000
+EXPOSE 8000
 
-# Uvicorn orqali FastAPI ilovani ishga tushirish
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+# 3. FastAPI ni uvicorn orqali ishga tushiramiz
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
